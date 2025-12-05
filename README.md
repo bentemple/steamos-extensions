@@ -4,23 +4,72 @@ This repo documents and provides an example set of extensions that utilize the
 `systemd-sysext` mechanism. This mechanism can be used to create permanent system
 modifications that support filesystem overlays and automatically enabled systemd unit files.
 
+This repo is a fork of [MiningMarsh/steamos-extension-examples](https://github.com/MiningMarsh/steamos-extension-examples)
+I extended it to combine the unpacked extensions and then use Github actions to pack the extensions as releases instead of having 2 separate [repositories](https://github.com/MiningMarsh/steamos-extensions). All credit to @MiningMarsh for putting this together so elegantly.
+
+I also added a Steamdeck Hibernate After Sleep extension, as that was my first primary use-case for wanting to persist a major change to my steamdeck and ensure I didn't need to do anything between updates to retain the functionality.
+
+## Quick Start
+
+Copy any desired extensions into `/var/lib/extensions/` along with the `steamos-extension-loader.raw` extension.
+Run the following command to enable all the extensions you copied:
+```
+systemctl enable --now systemd-sysext.service
+systemctl enable --now steamos-extension-loader-installer.service
+```
+Reboot your steamdeck, the extensions should now be installed.
+
+## Extension Summary
+
+### Required:
+
+`steamos-extension-loader` - Persists the extensions between system updates and installs new extensions
+
+### Optional extensions:
+
+#### Boot:
+- `steamos-extension-hibernate-after-sleep` - Auto-hibernates after configurable suspend duration (default 60min) with swap/GRUB/Bluetooth fixes
+- `steamos-extension-retain-boot` - Forces SteamOS as next boot entry after each reboot (dual-boot helper)
+
+#### Utilities:
+- `steamos-extension-clean-games` - Auto-removes untracked game directories and orphaned shader caches from Steam install paths
+- `steamos-extension-compat-tools` - Auto-installs/updates emulators Boxtron, Luxtorpeda, Roberta, and Proton GE to latest versions
+- `steamos-extension-update-decky-loader` - Auto-updates Decky Loader stable channel (restarts Steam client on update)
+- `steamos-extension-update-btrfs` - Auto-updates steamos-btrfs on schedule (SteamOS only, not HoloISO)
+- `steamos-extension-update-flatpak` - Scheduled repair/update of all flatpaks with dependency cleanup
+
+#### Performance Tweaks:
+- `steamos-extension-performance-tuning` - Applies performance tweaks and AC/battery-aware CPU governor/NVMe tuning via udev rules
+- `steamos-extension-thermal-tdp` - Dynamic TDP management: bursts to 20W then throttles to 15W based on temperature (Steam Deck only)
+- `steamos-extension-preload` - Pre-caches frequently-loaded files to minimize latency
+- `steamos-extension-prelockd` - Prevents executable memory pages from swapping to reduce latency
+- `steamos-extension-nohang` - Minimizes system latency during low-memory conditions via nohang daemon
+- `steamos-extension-irqbalance` - Balances CPU interrupts across cores while minimizing active cores for power efficiency
+- `steamos-extension-disable-mitigations` - Adds mitigations=off kernel parameter for potential performance at security cost
+
+#### Other:
+- `steamos-extension-zram` - Configures zram swap + ext4 filesystem for caching frequently-written directories in RAM - Mostly a toy, likely don't use
+
 ## HoloISO Support
+<details>
+<Summary>Details</Summary>
 
 Most of these extensions have been tested to function against HoloISO. HoloISO is close enough to SteamOS in implementation that minimal levels of support code is needed to target both.
 
 All of these extensions assume that the player's username is `deck`, and a few won't function on HoloISO installs using a different username. Specific details about this are mentioned in the individual extension's documentation at the end of this README.
 
-## systemd-sysext
+</details>
+
+## How It Works: systemd-sysext
+<details>
+<Summary>Details</Summary>
 
 The mechanism this repo provides is little more than a supplement to systemd's built-in `systemd-sysext` mechanism. The primary addition this mechanism adds is a way to automatically load systemd units from installed `systemd-sysext` extensions, whereas normal extensions require users to manually enable any units they wish to use, which won't survive upgrades.
 
 For documentation on how to build systemd-sysext extensions, please see here: https://www.freedesktop.org/software/systemd/man/latest/systemd-sysext.html
 
 The rest of this README.md will focus on the specific differences needed to use this extension system wrapper.
-
-## Source Code
-
-All the `.raw` files are just squashfs images. They can be extracted by 7z or mounted on linux, and are thus self-documenting. They are generated via the build script and created via github actions.
+</details>
 
 ## steamos-extension-loader
 
@@ -35,7 +84,9 @@ systemctl enable --now systemd-sysext.service
 systemctl enable --now steamos-extension-loader-installer.service
 ```
 
-## How it Works
+## How it Works: `steamos-extension-loader`
+<details>
+<Summary>Details</Summary>
 
 `steamos-extension-loader.service` and `steamos-extension-loader-installer.service` have two purposes:
 
@@ -68,7 +119,9 @@ The algorithm it uses to enable units is very straightforward:
 
 The SteamOS update mechanism does not like `systemd-sysext.service` to be running, as it creates a read-only overlayfs on `/usr`. To solve this problem, `systemd-sysext.service` unloads itself when `rauc.service` (the update service) is started. Unfortunately, `rauc.service` does not unload itself until reboot, which means all extensions are unloaded until reboot. Updates that occur during boot-up do not conflict with `systemd-sysext.service`, as only steam client updates can apply during boot-up.
 
-## Extensions
+</details>
+
+## Optional Extensions
 
 Installing additional extensions is as easy as placing them in `/var/lib/extensions` and rebooting.
 
@@ -78,6 +131,25 @@ Some extensions may change grub boot options in order to add kernel parameters. 
 
 A number of example extensions that I personally use are included in this repo, with explanations of what they do in the following sections.
 
+
+
+### steamos-extension-hibernate-after-sleep
+
+This extension enables hibernate-after-sleep functionality, automatically hibernating the Steam Deck after being suspended for a configurable period (default: 60 minutes). It changes also changes the swap file (default: 20GB), configures GRUB with resume parameters, and fixes Bluetooth issues after resume.
+
+This code was based off of the following publication: https://github.com/nazar256/publications/blob/main/guides/steam-deck-hibernation.md
+
+To configure, copy `/usr/share/doc/steamos-extension-hibernate-after-sleep/example-config` to `/home/deck/.config/hibernate-after-sleep`, edit `HibernateDelaySec` (e.g., "30min", "2h") and `TargetSwapFileSizeInGbs` (e.g., 10, 30), and run `sudo /usr/sbin/steamos-extension-hibernate-after-sleep-setup`. Changes require a reboot.
+Additionally, this script copies an uninstaller to /home/deck/.bin for easy removal should you want to turn the extension off, simply run `sh /home/deck/.bin/steamos-extension-hibernate-after-sleep-uninstall.sh`
+
+### steamos-extension-retain-boot
+
+This extension sets SteamOS as the next boot entry after each reboot. This can be useful when dual booting if the other OS likes to mess with the boot order.
+
+This extensiom functions on HoloISO, but might choose the boot order incorrectly on systems dual booting HoloISO and SteamOS.
+
+
+
 ### steamos-extension-clean-games
 
 This extension automatically removes any game directory from Steam's common install path if they are not tracked by an installed package (game). It also removes any shadercache for missing packages, preventing size buildup of shadercache.
@@ -85,44 +157,6 @@ This extension automatically removes any game directory from Steam's common inst
 ### steamos-extension-compat-tools
 
 This extension regularly installs and updates Boxtron, Luxtorpeda, Roberta, and Proton GE. It always installs the latest version, and it changes their labels to "DosBox", "Source Ports", "ScummVM", and "Proton GE" respectively. In particular, you can set games to use "Proton GE" by default, and they will always use the latest version.
-
-### steamos-extension-disable-mitigations
-
-This extension adds `mitigations=off` to SteamOS' boot config. It is debatable whether this improves performance, so treat this extension with caution. This also *definitely* makes your installation less secure.
-
-I recommend only using this extension if you understand spectre-like vulnerabilities and can perform your own risk and threat assessment.
-
-This extension will cause an additional reboot after updates are applied. When used together with performance-tuning, only one additional reboot will occur, not two.
-
-### steamos-extension-nohang
-
-This extension installs `nohang` to help minimize system latency in low memory conditions.
-
-### steamos-extension-prelockd
-
-This extension installs `prelockd` to help minimize system latency by preventing executable memory-mapped pages from being swapped.
-
-### steamos-extension-thermal-tdp
-
-This extension bundles a daemon that automatically sets the system TDP limit to 20w, and lowers it slowly back down to 15w based on system temperature.
-
-This should allow bursty games to run at 20w, while keeping sustained loads at 15w to prevent overheating.
-
-This utility should not be used on any hardware except the steam deck! Most likely, it won't do anything, however, there is a small possibility that this daemon could set inappropriate TDP values for some other AMD SoC than the steam deck.
-
-### steamos-extension-performance-tuning
-
-This extension applies various performance tuning changes. Additionally, it installs udev rules that will change the CPU governor, NVMe parameters, etc. when the system transitions from on AC power to off AC power and vice versa. When on AC power, everything is pinned to a maximum performance setting. When off AC power, settings are pinned to values that should give a good balance between performance and power savings.
-
-This extension changes some kernel command line parameters and will cause an additional reboot after updates are applied. When used together with disable-mitigations, only one additional reboot will occur, not two.
-
-This extension does not apply kernel command line performance tweaks on HoloISO if it is detected. The kernel parameters caused boot issues for this author, and have been set to only apply to SteamOS, where they function correctly.
-
-### steamos-extension-update-btrfs
-
-If you use `steamos-btrfs`, this extension will automatically update it on a schedule.
-
-Don't use this extension with HoloISO. `steamos-btrfs` likely doesn't function correctly against HoloISO.
 
 ### steamos-extension-update-decky-loader
 
@@ -132,9 +166,66 @@ Note that this extension cannot perform the initial Decky Loader install. The De
 
 This extension only functions on HoloISO of the player's username is `deck`.
 
+### steamos-extension-update-btrfs
+
+If you use `steamos-btrfs`, this extension will automatically update it on a schedule.
+
+Don't use this extension with HoloISO. `steamos-btrfs` likely doesn't function correctly against HoloISO.
+
+
 ### steamos-extension-update-flatpak
 
 This extension repairs and updates all installed user and system flatpaks on a schedule. It also removes any unused dependencies after updates.
+
+
+
+### steamos-extension-performance-tuning
+
+This extension applies various performance tuning changes. Additionally, it installs udev rules that will change the CPU governor, NVMe parameters, etc. when the system transitions from on AC power to off AC power and vice versa. When on AC power, everything is pinned to a maximum performance setting. When off AC power, settings are pinned to values that should give a good balance between performance and power savings.
+
+This extension changes some kernel command line parameters and will cause an additional reboot after updates are applied. When used together with disable-mitigations, only one additional reboot will occur, not two.
+
+This extension does not apply kernel command line performance tweaks on HoloISO if it is detected. The kernel parameters caused boot issues for this author, and have been set to only apply to SteamOS, where they function correctly.
+
+
+### steamos-extension-thermal-tdp
+
+This extension bundles a daemon that automatically sets the system TDP limit to 20w, and lowers it slowly back down to 15w based on system temperature.
+
+This should allow bursty games to run at 20w, while keeping sustained loads at 15w to prevent overheating.
+
+This utility should not be used on any hardware except the steam deck! Most likely, it won't do anything, however, there is a small possibility that this daemon could set inappropriate TDP values for some other AMD SoC than the steam deck.
+
+
+### steamos-extension-preload
+
+This extension  installs the `preload` service. `preload` attempts to minimize system latency by pre-caching commonly loaded files. A state file will be left at `/var/lib/preload.state` if you uninstall this extension. The state file is minimal in size (under a megabyte typically).
+
+
+### steamos-extension-prelockd
+
+This extension installs `prelockd` to help minimize system latency by preventing executable memory-mapped pages from being swapped.
+
+
+### steamos-extension-nohang
+
+This extension installs `nohang` to help minimize system latency in low memory conditions.
+
+
+### steamos-extension-irqbalance
+
+This extension installs and runs the `irqbalance` service, which automatically balances interrupts across CPU cores. It is configured to try and minimize the number of running cores in addition to balancing interrupts to strike a better balance between power consumption and performance.
+
+
+### steamos-extension-disable-mitigations
+
+This extension adds `mitigations=off` to SteamOS' boot config. It is debatable whether this improves performance, so treat this extension with caution. This also *definitely* makes your installation less secure.
+
+I recommend only using this extension if you understand spectre-like vulnerabilities and can perform your own risk and threat assessment.
+
+This extension will cause an additional reboot after updates are applied. When used together with performance-tuning, only one additional reboot will occur, not two.
+
+
 
 ### steamos-extension-zram
 
@@ -148,26 +239,3 @@ The motivation for this extension was that btrfs seemed to cause hangs under hea
 This extension significantly slows down shutdowns and system updates, as they have to wait for the RAM cache to synchronize to disk first.
 
 This extension will only function on HoloISO if the player's username is `deck`.
-
-### steamos-extension-retain-boot
-
-This extension sets SteamOS as the next boot entry after each reboot. This can be useful when dual booting if the other OS likes to mess with the boot order.
-
-This extensiom functions on HoloISO, but might choose the boot order incorrectly on systems dual booting HoloISO and SteamOS.
-
-### steamos-extension-irqbalance
-
-This extension installs and runs the `irqbalance` service, which automatically balances interrupts across CPU cores. It is configured to try and minimize the number of running cores in addition to balancing interrupts to strike a better balance between power consumption and performance.
-
-### steamos-extension-preload
-
-This extension  installs the `preload` service. `preload` attempts to minimize system latency by pre-caching commonly loaded files. A state file will be left at `/var/lib/preload.state` if you uninstall this extension. The state file is minimal in size (under a megabyte typically).
-
-### steamos-extension-hibernate-after-sleep
-
-This extension enables hibernate-after-sleep functionality, automatically hibernating the Steam Deck after being suspended for a configurable period (default: 60 minutes). It changes also changes the swap file (default: 20GB), configures GRUB with resume parameters, and fixes Bluetooth issues after resume.
-
-This code was based off of the following publication: https://github.com/nazar256/publications/blob/main/guides/steam-deck-hibernation.md
-
-To configure, copy `/usr/share/doc/steamos-extension-hibernate-after-sleep/example-config` to `/home/deck/.config/hibernate-after-sleep`, edit `HibernateDelaySec` (e.g., "30min", "2h") and `TargetSwapFileSizeInGbs` (e.g., 10, 30), and run `sudo /usr/sbin/steamos-extension-hibernate-after-sleep-setup`. Changes require a reboot.
-Additionally, this script copies an uninstaller to /home/deck/.bin for easy removal should you want to turn the extension off, simply run `sh /home/deck/.bin/steamos-extension-hibernate-after-sleep-uninstall.sh`
