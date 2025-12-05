@@ -1,0 +1,41 @@
+name: Build and Release Extensions
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y squashfs-tools rsync zsh curl
+
+      - name: Build extensions
+        run: |
+          chmod +x ./build
+          ./build
+
+      - name: List built files
+        run: ls -lh ./build/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/*.raw
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
