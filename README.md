@@ -133,6 +133,8 @@ A number of example extensions that I personally use are included in this repo, 
 
 ### steamos-extension-hibernate-after-sleep
 
+Why? Because I was tired of finding my steamdeck dead if I didn't use it for a few days but forgot to put it on the charger. I would rather wait 20 seconds if I haven't used it in > 1 hour (or x time, configurable) This will also help to preserve battery life long-term by not needlessly cycling the battery.
+
 This extension enables hibernate-after-sleep functionality, automatically hibernating the Steam Deck after being suspended for a configurable period (default: 60 minutes). It changes also changes the swap file (default: 20GB), configures GRUB with resume parameters, and fixes Bluetooth issues after resume.
 
 This code was based off of the following publication: https://github.com/nazar256/publications/blob/main/guides/steam-deck-hibernation.md
