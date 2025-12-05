@@ -24,8 +24,8 @@ jobs:
 
       - name: Build extensions
         run: |
-          chmod +x ./build
-          ./build
+          chmod +x ./build.sh
+          ./build.sh
 
       - name: List built files
         run: ls -lh ./build/
