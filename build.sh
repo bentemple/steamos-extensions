@@ -31,17 +31,20 @@ function compress() {
 		-fragment-queue 2048
 }
 
+local build_dir=$(pwd)/build/
+if [[ ! -d $build_dir ]]; then
+    mkdir -p $build_dir
+fi
 local temp=$(mktemp -d)
 for dir in $(ls | grep -v build | grep -v README.md); do
 	rsync $dir/ -rav --delete --delete-before $temp
 	mkdir -p $temp/usr/lib/extension-release.d
 	echo 'ID=_any' > $temp/usr/lib/extension-release.d/extension-release.$dir
-	mkdir -p ./build/   
-	if [[ -e ./build/$dir.raw ]]; then
-		rm -rf ./build/$dir.raw
+	if [[ -e $build_dir/$dir.raw ]]; then
+		rm -rf $build_dir/$dir.raw
 	fi
 	pushd $temp
-	compress ./build/$dir.raw *
+	compress $build_dir/$dir.raw *
 	popd
 done
 rm -rf $temp
