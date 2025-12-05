@@ -1,11 +1,9 @@
-# A SteamOS Extension System and a Collection of SteamOS Extensions
+# SteamOS System Modification Persistence
 
-This repo documents and provides an example set of extensions that utilize the 
-`systemd-sysext` mechanism. This mechanism can be used to create permanent system
-modifications that support filesystem overlays and automatically enabled systemd unit files.
+This repo documents and provides an example set of extensions that utilize the `systemd-sysext` mechanism. This mechanism can be used to create permanent system modifications that support filesystem overlays and automatically enabled systemd unit files.
 
 This repo is a fork of [MiningMarsh/steamos-extension-examples](https://github.com/MiningMarsh/steamos-extension-examples)
-I extended it to combine the unpacked extensions and then use Github actions to pack the extensions as releases instead of having 2 separate [repositories](https://github.com/MiningMarsh/steamos-extensions). All credit to @MiningMarsh for putting this together so elegantly.
+I extended it to combine the unpacked extensions and then use Github actions to pack the extensions as releases instead of having 2 separate [repositories](https://github.com/MiningMarsh/steamos-extensions). All credit to [MiningMarsh](https://github.com/MiningMarsh) for putting this together so elegantly.
 
 I also added a Steamdeck Hibernate After Sleep extension, as that was my first primary use-case for wanting to persist a major change to my steamdeck and ensure I didn't need to do anything between updates to retain the functionality.
 
