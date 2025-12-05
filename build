@@ -36,12 +36,12 @@ for dir in $(ls | grep -v build | grep -v README.md); do
 	rsync $dir/ -rav --delete --delete-before $temp
 	mkdir -p $temp/usr/lib/extension-release.d
 	echo 'ID=_any' > $temp/usr/lib/extension-release.d/extension-release.$dir
-	mkdir -p /var/lib/extensions
-	if [[ -e /var/lib/extensions/$dir.raw ]]; then
-		rm -rf /var/lib/extensions/$dir.raw
+	mkdir -p ./build/   
+	if [[ -e ./build/$dir.raw ]]; then
+		rm -rf ./build/$dir.raw
 	fi
 	pushd $temp
-	compress /var/lib/extensions/$dir.raw *
+	compress ./build/$dir.raw *
 	popd
 done
 rm -rf $temp
