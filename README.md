@@ -7,6 +7,10 @@ I extended it to combine the unpacked extensions and then use Github actions to 
 
 I also added a Steamdeck Hibernate After Sleep extension, as that was my first primary use-case for wanting to persist a major change to my steamdeck and ensure I didn't need to do anything between updates to retain the functionality.
 
+## Disclaimer
+
+I provide no warranties for this code. Modifying your steamdeck's software could potentially make your device unbootable. Typically this is recoverable from a bootable USB drive, but proceed at your own risk.
+
 ## Quick Start
 
 Copy any desired extensions into `/var/lib/extensions/` along with the `steamos-extension-loader.raw` extension.
