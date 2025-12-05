@@ -26,13 +26,19 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 echo ""
-echo "Step 1: Removing suspend-then-hibernate link..."
-if [[ -L "/etc/systemd/system/systemd-suspend.service" ]]; then
-	rm -f /etc/systemd/system/systemd-suspend.service
+echo "Step 1: Removing and disabling hibernate-after-sleep service, helpers, and suspend link..."
+systemctl disable --now steamos-extension-hibernate-after-sleep-install.service
+systemctl disable --now steamos-extension-hibernate-after-sleep-fix-bluetooth.service
+systemctl disable --now steamos-extension-hibernate-after-sleep-mark-boot-good.service
+
+echo "Removing suspend link..."
+if [[ -L "/etc/systemd/system/steamos-extension-hibernate-after-sleep-install.service" ]]; then
+    rm -f /etc/systemd/system/systemd-suspend.service
 	echo "  Removed"
 else
 	echo "  Not found (skipping)"
 fi
+
 
 echo ""
 echo "Step 2: Removing sleep configuration..."
@@ -83,11 +89,32 @@ fi
 
 echo ""
 echo "Step 4: Removing GRUB resume parameters..."
-grub_file="/etc/default/grub"
-if grep -q "resume=/dev/disk/by-uuid" "$grub_file"; then
-	sed -i 's/ resume=\/dev\/disk\/by-uuid\/[^ ]*//g' "$grub_file"
-	sed -i 's/ resume_offset=[0-9]*//g' "$grub_file"
-	update-grub
+starter=steamenv_boot
+cfg=/boot/efi/EFI/steamos/grub.cfg
+remount=false
+
+# HoloISO
+if [[ -f /boot/grub/grub.cfg ]]; then
+	starter=linux
+	cfg=/boot/grub/grub.cfg
+	remount=true
+fi
+
+if [[ ! -e $cfg ]]; then
+	echo "  Warning: GRUB config file not found at $cfg (skipping)"
+elif grep -q "resume=/dev/disk/by-uuid" "$cfg"; then
+	# HoloISO keeps boot on the readonly partition.
+	if $remount; then
+		steamos-readonly disable
+	fi
+
+	sed -i -E 's/ resume=[^ ]*//g' "$cfg"
+	sed -i -E 's/ resume_offset=[0-9]*//g' "$cfg"
+
+	if $remount; then
+		steamos-readonly enable
+	fi
+
 	echo "  Removed from GRUB (will take effect on next boot)"
 else
 	echo "  Not found in GRUB (skipping)"

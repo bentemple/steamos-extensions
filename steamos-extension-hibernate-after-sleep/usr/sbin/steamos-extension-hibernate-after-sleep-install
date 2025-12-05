@@ -103,26 +103,43 @@ function update_grub_resume {
 	local swapfile_path=$(get_swapfile_path)
 	local uuid=$(findmnt -no UUID -T "$swapfile_path")
 	local offset=$(get_swap_offset)
-	local grub_file="/etc/default/grub"
-	local needs_update=0
+	local starter=steamenv_boot
+	local cfg=/boot/efi/EFI/steamos/grub.cfg
+	local remount=false
 
-	if ! grep -q "resume=/dev/disk/by-uuid" "$grub_file"; then
-		sed -i "s/\\(GRUB_CMDLINE_LINUX_DEFAULT.*\\)\"\$/\\1 resume=\\/dev\\/disk\\/by-uuid\\/$uuid resume_offset=$offset\"/" "$grub_file"
-		needs_update=1
-	else
-		local grub_uuid=$(grep "GRUB_CMDLINE_LINUX_DEFAULT" "$grub_file" | sed -e 's/.*resume=\/dev\/disk\/by-uuid\/\([^ ]*\).*/\1/')
-		local grub_offset=$(grep "GRUB_CMDLINE_LINUX_DEFAULT" "$grub_file" | sed -e 's/.*resume_offset=\([0-9]*\).*/\1/')
-
-		if [[ "$grub_uuid" != "$uuid" ]] || [[ "$grub_offset" != "$offset" ]]; then
-			sed -i "s/\\(.*GRUB_CMDLINE_LINUX_DEFAULT.*resume=\\/dev\\/disk\\/by-uuid\\/\\)[^ ]*\\( resume_offset=\\)[0-9]*\\(.*\\)/\\1$uuid\\2$offset\\3/" "$grub_file"
-			needs_update=1
-		fi
+	# HoloISO
+	if [[ -f /boot/grub/grub.cfg ]]; then
+		starter=linux
+		cfg=/boot/grub/grub.cfg
+		remount=true
 	fi
 
-	if [[ $needs_update -eq 1 ]]; then
-		echo "Updating GRUB configuration"
-		update-grub
+	if [[ ! -e $cfg ]]; then
+		echo "Warning: GRUB config file not found at $cfg"
+		return 1
 	fi
+
+	# Check if resume parameters are already set correctly
+	if grep -q "resume=/dev/disk/by-uuid/$uuid" "$cfg" && grep -q "resume_offset=$offset" "$cfg"; then
+		echo "GRUB resume parameters already configured correctly"
+		return 0
+	fi
+
+	# HoloISO keeps boot on the readonly partition.
+	if $remount && [[ ! -f /tmp/.hibernate-after-sleep-readonly-disabled ]]; then
+		steamos-readonly disable
+		touch /tmp/.hibernate-after-sleep-readonly-disabled
+	fi
+
+	echo "Updating GRUB configuration"
+
+	# Remove existing resume parameters if present
+	sed -i -E 's/ resume=[^ ]*//g' "$cfg"
+	sed -i -E 's/ resume_offset=[0-9]*//g' "$cfg"
+
+	# Add new resume parameters
+	sed -i -E 's@^(\s*)'$starter'(.*)$@\1'$starter'\2 resume=/dev/disk/by-uuid/'$uuid' resume_offset='$offset'@g' "$cfg"
+	touch /tmp/.hibernate-after-sleep-modified
 }
 
 function ensure_logind_bypass {
@@ -224,6 +241,18 @@ function install_uninstall_script {
 	fi
 }
 
+function cleanup {
+	if [[ -f /tmp/.hibernate-after-sleep-readonly-disabled ]]; then
+		rm -f /tmp/.hibernate-after-sleep-readonly-disabled
+		steamos-readonly enable
+	fi
+
+	if [[ -f /tmp/.hibernate-after-sleep-modified ]]; then
+		rm -f /tmp/.hibernate-after-sleep-modified
+		echo "GRUB configuration updated. Please reboot for changes to take effect."
+	fi
+}
+
 if [[ "$1" == "--force" ]]; then
 	FORCE=1
 fi
@@ -236,3 +265,4 @@ enable_suspend_hibernate
 update_sleep_config
 enable_resume_services
 install_uninstall_script
+cleanup
