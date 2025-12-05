@@ -34,8 +34,8 @@ To configure the hibernate delay and swap file size:
    - HibernateDelaySec (default: 60min)
    - TargetSwapFileSizeInGbs (default: 20)
 
-5. Rerun the setup to apply changes:
-   sudo /usr/sbin/steamos-extension-hibernate-after-sleep-setup
+5. Rerun the install script to apply changes:
+   sudo /usr/sbin/steamos-extension-hibernate-after-sleep-install
 
 Valid time values
 -----------------
@@ -59,7 +59,7 @@ What this extension does
 GRUB Changes
 ------------
 
-This extension modifies /etc/default/grub to add resume parameters:
+This extension modifies the GRUB configuration directly to add resume parameters:
 - resume=/dev/disk/by-uuid/[UUID]
 - resume_offset=[OFFSET]
 
@@ -75,13 +75,13 @@ If hibernation doesn't work:
    ls -lh /home/swapfile
 
 2. Verify GRUB configuration:
-   cat /etc/default/grub | grep resume
+   cat /boot/efi/EFI/steamos/grub.cfg | grep resume
 
 3. Check systemd sleep configuration:
    cat /etc/systemd/sleep.conf
 
-4. Rerun the setup with --force flag:
-   sudo /usr/sbin/steamos-extension-hibernate-after-sleep-setup --force
+4. Rerun the install script with --force flag:
+   sudo /usr/sbin/steamos-extension-hibernate-after-sleep-install --force
 
 5. Reboot the system
 
