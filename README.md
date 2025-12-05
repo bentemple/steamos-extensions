@@ -140,6 +140,8 @@ This code was based off of the following publication: https://github.com/nazar25
 To configure, copy `/usr/share/doc/steamos-extension-hibernate-after-sleep/example-config` to `/home/deck/.config/hibernate-after-sleep`, edit `HibernateDelaySec` (e.g., "30min", "2h") and `TargetSwapFileSizeInGbs` (e.g., 10, 30), and run `sudo /usr/sbin/steamos-extension-hibernate-after-sleep-setup`. Changes require a reboot.
 Additionally, this script copies an uninstaller to /home/deck/.bin for easy removal should you want to turn the extension off, simply run `sh /home/deck/.bin/steamos-extension-hibernate-after-sleep-uninstall.sh`
 
+Thanks to [nazar256](https://github.com/nazar256/publications/blob/main/guides/steam-deck-hibernation.md) for documenting how to get hibernation working on the steamdeck. I simply took his work, and some of the tips mentioned in github issues, to create the [script](https://github.com/bentemple/steamdeck-hibernate-after-sleep-scripts) that was the original basis for this extension.
+
 ### steamos-extension-retain-boot
 
 This extension sets SteamOS as the next boot entry after each reboot. This can be useful when dual booting if the other OS likes to mess with the boot order.
